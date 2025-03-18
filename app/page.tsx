@@ -7,6 +7,7 @@ import SignalCombinationSelector from './components/SignalCombinationSelector';
 import ChartComponent from './components/ChartComponent';
 import usePPGProcessing from './hooks/usePPGProcessing';
 import useSignalQuality from './hooks/useSignalQuality';
+import useMongoDB from './hooks/useMongoDB';
 
 export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
@@ -14,6 +15,8 @@ export default function Home() {
   const [isUploading, setIsUploading] = useState(false);
   const [signalCombination, setSignalCombination] = useState('default');
   const [showConfig, setShowConfig] = useState(false);
+  const [currentSubject, setCurrentSubject] = useState('');
+  const [confirmedSubject, setConfirmedSubject] = useState('');
 
   // Define refs for video and canvas
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -30,6 +33,25 @@ export default function Home() {
   } = usePPGProcessing(isRecording, signalCombination, videoRef, canvasRef);
 
   const { signalQuality, qualityConfidence } = useSignalQuality(ppgData);
+  
+  // Use MongoDB hook with confirmedSubject
+  const { isUploading: isMongoUploading, pushDataToMongo: pushToMongo, fetchHistoricalData, historicalData } = useMongoDB(confirmedSubject);
+
+  // Fetch historical data when subject is confirmed
+  useEffect(() => {
+    if (confirmedSubject) {
+      fetchHistoricalData();
+    }
+  }, [confirmedSubject]);
+
+  // Confirm User Function
+  const confirmUser = () => {
+    if (currentSubject.trim()) {
+      setConfirmedSubject(currentSubject.trim());
+    } else {
+      alert('Please enter a valid Subject ID.');
+    }
+  };
 
   // Start or stop recording
   useEffect(() => {
@@ -82,6 +104,7 @@ export default function Home() {
     }
     // Prepare the record data – adjust or add additional fields as needed
     const recordData = {
+      subjectId: confirmedSubject, // Add subject ID to the data
       heartRate: {
         bpm: isNaN(heartRate.bpm) ? 0 : heartRate.bpm, // Replace NaN with "ERRATIC"
         confidence: hrv.confidence || 0,
@@ -124,6 +147,24 @@ export default function Home() {
       <div className="flex flex-col md:flex-row items-center justify-between w-full max-w-4xl mb-4">
         {/* Title */}
         <h1 className="text-3xl font-bold">HeartLen</h1>
+        
+        {/* User Panel */}
+        <div className="flex items-center mb-4 md:mb-0">
+          <input
+            type="text"
+            value={currentSubject}
+            onChange={(e) => setCurrentSubject(e.target.value)}
+            placeholder="Enter Subject ID"
+            className="border border-gray-300 rounded-md p-2"
+          />
+          <button
+            onClick={confirmUser}
+            className="bg-cyan-500 text-white px-4 py-2 rounded-md ml-2"
+          >
+            Confirm User
+          </button>
+        </div>
+
         {/* Recording Button */}
         <button
           onClick={() => setIsRecording(!isRecording)}
@@ -132,6 +173,7 @@ export default function Home() {
               ? 'bg-red-500 hover:bg-red-600 text-white'
               : 'bg-cyan-500 hover:bg-cyan-600 text-white'
           }`}
+          disabled={!confirmedSubject} // Disable if no subject is confirmed
         >
           {isRecording ? '⏹ STOP' : '⏺ START'} RECORDING
         </button>
@@ -143,11 +185,21 @@ export default function Home() {
               ? 'bg-green-500 hover:bg-green-600 text-white'
               : 'bg-gray-500 hover:bg-gray-600 text-white'
           }`}
-          disabled={!isRecording} // Enable only when recording is active
+          disabled={!isRecording || !confirmedSubject} // Enable only when recording is active and subject is confirmed
         >
           {isSampling ? '⏹ STOP SAMPLING' : '⏺ START SAMPLING'}
         </button>
       </div>
+
+      {/* Subject Information Display */}
+      {confirmedSubject && (
+        <div className="w-full max-w-4xl mb-4 p-4 bg-blue-50 rounded-lg">
+          <h2 className="text-xl font-semibold">Subject ID: {confirmedSubject}</h2>
+          <p>Last Access: {historicalData.lastAccess || 'First visit'}</p>
+          <p>Average Heart Rate: {historicalData.avgHeartRate?.toFixed(2) || 'No data'} BPM</p>
+          <p>Average HRV: {historicalData.avgHRV?.toFixed(2) || 'No data'} ms</p>
+        </div>
+      )}
 
       {/* Main Grid: Camera and Chart Side by Side */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl">

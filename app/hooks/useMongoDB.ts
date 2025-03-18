@@ -4,24 +4,46 @@ import { useState } from 'react';
 interface HistoricalData {
   avgHeartRate: number;
   avgHRV: number;
+  lastAccess?: string;
 }
 
-export default function useMongoDB() {
+interface RecordData {
+  subjectId: string;
+  heartRate: {
+    bpm: number;
+    confidence: number;
+  };
+  hrv: {
+    sdnn: number;
+    confidence: number;
+  };
+  ppgData: number[];
+  timestamp: Date;
+}
+
+export default function useMongoDB(subjectId: string = '') {
   const [isUploading, setIsUploading] = useState(false);
   const [historicalData, setHistoricalData] = useState<HistoricalData>({
     avgHeartRate: 0,
     avgHRV: 0,
+    lastAccess: undefined,
   });
 
   // POST: Save data to MongoDB
   const pushDataToMongo = async (recordData: RecordData) => {
-    if (isUploading) return; // Prevent overlapping calls
+    if (isUploading || !subjectId) return; // Prevent overlapping calls or calls without subject ID
     setIsUploading(true);
     try {
-      const response = await fetch('/api/handle-record', {
+      // Ensure subjectId is included in the data
+      const dataWithSubject = {
+        ...recordData,
+        subjectId: recordData.subjectId || subjectId,
+      };
+      
+      const response = await fetch('/api/save-record', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(recordData),
+        body: JSON.stringify(dataWithSubject),
       });
       const result = await response.json();
       if (result.success) {
@@ -36,18 +58,21 @@ export default function useMongoDB() {
     }
   };
 
-  // GET: Fetch historical averages
+  // GET: Fetch historical averages for specific subject
   const fetchHistoricalData = async () => {
+    if (!subjectId) return; // Skip if no subject ID
+    
     try {
-      const response = await fetch('/api/handle-record', {
+      const response = await fetch(`/api/save-record?subjectId=${subjectId}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
       const result = await response.json();
       if (result.success) {
         setHistoricalData({
-          avgHeartRate: result.avgHeartRate,
-          avgHRV: result.avgHRV,
+          avgHeartRate: result.data.avgHeartRate,
+          avgHRV: result.data.avgHRV,
+          lastAccess: result.data.lastAccess,
         });
       } else {
         console.error('❌ Error:', result.error);
