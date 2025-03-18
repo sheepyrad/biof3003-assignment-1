@@ -44,7 +44,6 @@ const RecordSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now },
 });
 
-// Use an existing model if available or compile a new one
 const Record = mongoose.models.Record || mongoose.model('Record', RecordSchema);
 
 export async function POST(request: Request) {
@@ -60,7 +59,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Create a new record including the entire ppgData array and subjectId
     const newRecord = await Record.create({
       subjectId: body.subjectId,
       heartRate: body.heartRate,

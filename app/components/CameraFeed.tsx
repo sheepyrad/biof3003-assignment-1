@@ -1,5 +1,6 @@
-// components/CameraFeed.tsx
-import React from 'react';
+// Assuming this is your CameraFeed component, modify it to:
+
+import React, { useRef, useEffect } from 'react';
 
 interface CameraFeedProps {
   videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -8,14 +9,18 @@ interface CameraFeedProps {
 
 const CameraFeed: React.FC<CameraFeedProps> = ({ videoRef, canvasRef }) => {
   return (
-    <div>
-      {/* Video Element */}
-      <video ref={videoRef} autoPlay playsInline muted className="hidden" />
+    <div className="relative w-full h-0 pb-[56.25%] bg-black rounded-lg overflow-hidden">
+      <video
+        ref={videoRef}
+        className="absolute inset-0 w-full h-full object-cover"
+        autoPlay
+        playsInline
+        muted
+      />
       <canvas
         ref={canvasRef}
-        width={640}
-        height={480}
-        className="w-full max-w-[640px] h-auto border border-black"
+        className="absolute inset-0 w-full h-full"
+        style={{ pointerEvents: 'none' }}
       />
     </div>
   );
