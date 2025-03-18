@@ -8,6 +8,8 @@ import ChartComponent from './components/ChartComponent';
 import usePPGProcessing from './hooks/usePPGProcessing';
 import useSignalQuality from './hooks/useSignalQuality';
 import useMongoDB from './hooks/useMongoDB';
+import { Toaster } from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 
 export default function Home() {
   const [isRecording, setIsRecording] = useState(false);
@@ -19,6 +21,8 @@ export default function Home() {
   const [confirmedSubject, setConfirmedSubject] = useState('');
   // New state for sidebar collapse in mobile view
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [subjectError, setSubjectError] = useState(false);
+
 
   // Define refs for video and canvas
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -36,8 +40,7 @@ export default function Home() {
 
   const { signalQuality, qualityConfidence } = useSignalQuality(ppgData);
 
-  // Use MongoDB hook with confirmedSubject
-  const { isUploading: isMongoUploading, pushDataToMongo: pushToMongo, fetchHistoricalData, historicalData } = useMongoDB(confirmedSubject);
+  const { isLoading, pushDataToMongo: pushToMongo, fetchHistoricalData, historicalData } = useMongoDB(confirmedSubject);
 
   // Fetch historical data when subject is confirmed
   useEffect(() => {
@@ -46,14 +49,69 @@ export default function Home() {
     }
   }, [confirmedSubject]);
 
-  // Confirm User Function
-  const confirmUser = () => {
-    if (currentSubject.trim()) {
-      setConfirmedSubject(currentSubject.trim());
-      // Close sidebar on mobile after confirming user
-      setSidebarOpen(false);
-    } else {
-      alert('Please enter a valid Subject ID.');
+    // Confirm User Function
+    const confirmUser = () => {
+      if (currentSubject.trim()) {
+        setConfirmedSubject(currentSubject.trim());
+        // Close sidebar on mobile after confirming user
+        setSidebarOpen(false);
+        toast.success(`Subject ID '${currentSubject.trim()}' confirmed!`);
+      } else {
+        setSubjectError(true); // Set error state for input field highlighting
+        toast.error('Please enter a valid Subject ID.', {
+          duration: 3000,
+          style: {
+            borderRadius: '10px',
+            background: '#333',
+            color: '#fff',
+          },
+        });
+      }
+    };
+  
+
+
+  // Validate subject ID for action buttons
+  interface ValidateSubjectBeforeActionProps {
+    action: string;
+  }
+
+  const validateSubjectBeforeAction = (action: ValidateSubjectBeforeActionProps['action']): boolean => {
+    if (!confirmedSubject) {
+      setSubjectError(true);
+      toast.error('Please confirm a Subject ID before proceeding.', {
+        duration: 3000,
+        style: {
+          borderRadius: '10px',
+          background: '#333',
+          color: '#fff',
+        },
+      });
+      // Open sidebar on mobile to make the subject input visible
+      setSidebarOpen(true);
+      return false;
+    }
+    return true;
+  };
+
+  // Modify your button click handlers
+  const handleRecordingToggle = () => {
+    // Always validate when starting recording
+    if (isRecording || validateSubjectBeforeAction('recording')) {
+      setIsRecording(!isRecording);
+    }
+  };
+
+  const handleSamplingToggle = () => {
+    // Always validate when starting sampling
+    if (isSampling || validateSubjectBeforeAction('sampling')) {
+      setIsSampling(!isSampling);
+    }
+  };
+
+  const handleDataUpload = () => {
+    if (validateSubjectBeforeAction('data upload')) {
+      pushDataToMongo();
     }
   };
 
@@ -147,11 +205,12 @@ export default function Home() {
 
   return (
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900">
+      <Toaster position="top-right" />
       {/* Sidebar - User Controls */}
       <div
-        className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} 
-                   fixed md:static w-64 h-full bg-white dark:bg-gray-800 shadow-lg 
-                   transition-transform duration-300 ease-in-out z-30`}
+        className={`${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} 
+             fixed lg:relative w-64 h-full bg-white dark:bg-gray-800 shadow-lg 
+             transition-transform duration-300 ease-in-out z-30 overflow-auto`}
       >
         {/* Sidebar Header */}
         <div className="p-4 border-b border-gray-200 dark:border-gray-700">
@@ -166,11 +225,14 @@ export default function Home() {
             <input
               type="text"
               value={currentSubject}
-              onChange={(e) => setCurrentSubject(e.target.value)}
+              onChange={(e) => {
+                setCurrentSubject(e.target.value);
+                if (subjectError) setSubjectError(false); // Clear error when user types
+              }}
               placeholder="Enter Subject ID"
-              className="w-full border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 
-                        text-gray-700 dark:text-gray-200 rounded-md p-2 focus:outline-none 
-                        focus:ring-2 focus:ring-cyan-500"
+              className={`w-full border ${subjectError ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300 dark:border-gray-600'} 
+            bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-md p-2 
+            focus:outline-none focus:ring-2 focus:ring-cyan-500`}
             />
             <button
               onClick={confirmUser}
@@ -188,16 +250,25 @@ export default function Home() {
             <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">Subject Information</h2>
             <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3">
               <h3 className="font-medium text-blue-700 dark:text-blue-300">ID: {confirmedSubject}</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Last Access: {historicalData.lastAccess
-                  ? new Date(historicalData.lastAccess).toLocaleString('en-US', {
-                    dateStyle: 'medium',
-                    timeStyle: 'short'
-                  })
-                  : 'First visit'}
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Avg HR: {historicalData.avgHeartRate?.toFixed(2) || 'No data'} BPM</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">Avg HRV: {historicalData.avgHRV?.toFixed(2) || 'No data'} ms</p>
+              {isLoading ? (
+                <div className="py-2 text-center">
+                  <div className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-solid border-blue-500 border-r-transparent"></div>
+                  <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Loading data...</span>
+                </div>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    Last Access: {historicalData.lastAccess
+                      ? new Date(historicalData.lastAccess).toLocaleString('en-US', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short'
+                      })
+                      : 'First visit'}
+                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Avg HR: {historicalData.avgHeartRate?.toFixed(2) || 'No data'} BPM</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Avg HRV: {historicalData.avgHRV?.toFixed(2) || 'No data'} ms</p>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -207,32 +278,31 @@ export default function Home() {
           <h2 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-3">Controls</h2>
           <div className="space-y-3">
             <button
-              onClick={() => setIsRecording(!isRecording)}
+              onClick={handleRecordingToggle}
               className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-all duration-300 
-                        ${isRecording
+                                    ${isRecording
                   ? 'bg-red-500 hover:bg-red-600 text-white'
                   : 'bg-cyan-500 hover:bg-cyan-600 text-white'}`}
-              disabled={!confirmedSubject}
             >
               {isRecording ? '⏹ STOP' : '⏺ START'} RECORDING
             </button>
 
             <button
-              onClick={() => setIsSampling(!isSampling)}
+              onClick={handleSamplingToggle}
               className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-all duration-300
-                        ${isSampling
+                                    ${isSampling
                   ? 'bg-green-500 hover:bg-green-600 text-white'
                   : 'bg-gray-500 hover:bg-gray-600 text-white'}`}
-              disabled={!isRecording || !confirmedSubject}
+              disabled={!isRecording}
             >
               {isSampling ? '⏹ STOP SAMPLING' : '⏺ START SAMPLING'}
             </button>
 
             <button
-              onClick={pushDataToMongo}
+              onClick={handleDataUpload}
               className="w-full bg-purple-500 hover:bg-purple-600 text-white font-medium py-2 
-                       rounded-md transition-colors duration-200 disabled:opacity-50"
-              disabled={isUploading || ppgData.length === 0 || !confirmedSubject}
+                                   rounded-md transition-colors duration-200 disabled:opacity-50"
+              disabled={isUploading || ppgData.length === 0}
             >
               {isUploading ? 'Saving...' : 'Save Data'}
             </button>
@@ -240,12 +310,15 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Mobile sidebar toggle */}
+      {/* Mobile sidebar toggle - responsive positioning */}
       <button
         onClick={() => setSidebarOpen(!sidebarOpen)}
-        className="md:hidden fixed bottom-4 left-4 z-40 bg-cyan-500 text-white p-3 rounded-full shadow-lg"
+        className={`lg:hidden fixed ${sidebarOpen ? 'top-4 left-[17rem]' : 'top-4 left-4'} 
+             z-40 bg-cyan-600 text-white p-3 rounded-lg shadow-lg 
+             hover:bg-cyan-700 transition-all duration-300 flex items-center justify-center`}
+        aria-label="Toggle sidebar"
       >
-        {sidebarOpen ? '✖' : '☰'}
+        <span className="text-xl font-bold">{sidebarOpen ? '✖' : '☰'}</span>
       </button>
 
       {/* Main Content Area */}
