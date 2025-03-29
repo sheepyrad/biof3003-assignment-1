@@ -148,7 +148,7 @@ export default function Home() {
     if (isSampling && ppgData.length > 0) {
       intervalId = setInterval(() => {
         pushDataToMongo();
-      }, 10000);
+      }, 1000); // Every 10 second
     }
 
     return () => {
