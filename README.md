@@ -1,8 +1,8 @@
-# HeartLen App
+# HeartLens App
 
 ## Project Overview
 
-The HeartLen App is a web-based tool designed to process photoplethysmography (PPG) signals captured via a webcam. It calculates heart rate, heart rate variability (HRV), and signal quality using machine learning models. The processed data can be saved to a MongoDB database for further analysis.
+The HeartLens App is a web-based tool designed to process photoplethysmography (PPG) signals captured via a webcam. It calculates heart rate, heart rate variability (HRV), and signal quality using machine learning models. The processed data can be saved to a MongoDB database for further analysis.
 
 ## Repository Structure
 
@@ -29,7 +29,7 @@ The HeartLen App is a web-based tool designed to process photoplethysmography (P
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/heartlen-app.git
+   git clone https://github.com/sheepyrad/biof3003-assignment-1.git
    cd biof3003-assignment-1
    ```
 
