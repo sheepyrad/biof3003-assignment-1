@@ -30,7 +30,7 @@ The HeartLen App is a web-based tool designed to process photoplethysmography (P
 1. Clone the repository:
    ```bash
    git clone https://github.com/your-username/heartlen-app.git
-   cd heartlen-app
+   cd biof3003-assignment-1
    ```
 
 2. Install dependencies:
@@ -92,19 +92,11 @@ Alternatively, you can use the [Vercel CLI](https://vercel.com/docs/cli):
 
 ## Technologies Used
 
-- Next.js 14 with App Router
+- Next.js 15 with App Router
 - TypeScript
 - TensorFlowjs for signal quality prediction
 - MongoDB for data storage
 - Tailwind CSS for styling
-
-## Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## License
 
